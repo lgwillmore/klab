@@ -3,6 +3,16 @@ package com.binarymonks.klab.actors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.actor
 
+/**
+ * Exploration of working with actors in an object oriented way.
+ *
+ * In this example we have an Account with a balance. This object has state which we want to modify concurrently.
+ *
+ * There is of course the old school method of various locks and synchronizaton, but here we will use a kotlin actor.
+ *
+ * This means that we achieve our "thread safety" through communication via a channel.
+ */
+
 
 /**
  * An object oriented wrapper for communicating with the actor.
@@ -35,7 +45,10 @@ class Account : CoroutineScope {
  * The actor that provides thread safe communication with the balance state.
  */
 private fun CoroutineScope.accountActor() = actor<AccountActorMsg> {
+
+    // This is the state that we want to protect - keep safe from concurrent modification
     var balance = 0.0
+
     for (message in channel) {
         when (message) {
             is AccountActorMsg.GetBalance -> {
@@ -59,13 +72,15 @@ private fun CoroutineScope.accountActor() = actor<AccountActorMsg> {
     }
 }
 
-sealed class AccountActorMsg {
+private sealed class AccountActorMsg {
     data class GetBalance(val result: CompletableDeferred<Double>) : AccountActorMsg()
     data class Deposit(val amount: Double, val result: CompletableDeferred<Unit>) : AccountActorMsg()
     data class Withdraw(val amount: Double, val result: CompletableDeferred<Unit>) : AccountActorMsg()
 }
 
-
+/**
+ * Lets create an account and modify the balance in what I think is a highly concurrent way.
+ */
 fun main() = runBlocking {
     val myAccount = Account()
     var accountActions = MutableList(1_000_000) {
